@@ -51,3 +51,17 @@ def plot_equity(equity: pd.Series, title: str = "Equity curve"):
 
     plt.tight_layout()
     plt.show()
+
+def compute_dca_metrics(equity_curve: pd.DataFrame) -> dict:
+    """
+    For strategies with ongoing contributions (DCA or combined).
+    Compares final value to total amount actually invested.
+    """
+    final_value = equity_curve["equity"].iloc[-1]
+    total_invested = equity_curve["cash_invested"].iloc[-1]
+
+    return {
+        "total_invested": round(total_invested, 2),
+        "final_value":     round(final_value, 2),
+        "total_return":    round((final_value / total_invested) - 1, 4),
+    }

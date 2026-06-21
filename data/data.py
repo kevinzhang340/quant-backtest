@@ -4,26 +4,36 @@ import os
 
 CACHE_DIR = "data"
 
-def get_prices(tickers: list, start: str, end: str) -> pd.DataFrame:
+def get_prices(tickers: list, start: str, end: str) -> dict:
     """
-    Download adjusted closing prices for a list of tickers.
-    Caches to a Parquet file so you don't hit the network every run.
-    Returns a DataFrame of shape (trading_days, n_tickers).
+    Download adjusted Open and Close prices for a list of tickers.
+    Caches to Parquet files so you don't hit the network every run.
+    Returns a dict: {"close": DataFrame, "open": DataFrame}
     """
-    cache_file = os.path.join(CACHE_DIR, f"prices_{start}_{end}.parquet")
+    close_cache = os.path.join(CACHE_DIR, f"close_{start}_{end}.parquet")
+    open_cache  = os.path.join(CACHE_DIR, f"open_{start}_{end}.parquet")
 
-    if os.path.exists(cache_file):
-        print(f"Loading from cache: {cache_file}")
-        return pd.read_parquet(cache_file)
+    if os.path.exists(close_cache) and os.path.exists(open_cache):
+        print(f"Loading from cache: {close_cache}, {open_cache}")
+        return {
+            "close": pd.read_parquet(close_cache),
+            "open":  pd.read_parquet(open_cache),
+        }
 
     print(f"Downloading {tickers} from {start} to {end}...")
     raw = yf.download(tickers, start=start, end=end, auto_adjust=True)
 
     if isinstance(raw.columns, pd.MultiIndex):
-        prices = raw["Close"]
+        close = raw["Close"]
+        open_ = raw["Open"]
     else:
-        prices = raw[["Close"]].rename(columns={"Close": tickers[0]})
+        close = raw[["Close"]].rename(columns={"Close": tickers[0]})
+        open_ = raw[["Open"]].rename(columns={"Open": tickers[0]})
 
-    prices.dropna(how="all", inplace=True)
-    prices.to_parquet(cache_file)
-    return prices
+    close.dropna(how="all", inplace=True)
+    open_.dropna(how="all", inplace=True)
+
+    close.to_parquet(close_cache)
+    open_.to_parquet(open_cache)
+
+    return {"close": close, "open": open_}
